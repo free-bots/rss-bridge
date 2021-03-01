@@ -17,7 +17,7 @@ class UhdpaperBridge extends BridgeAbstract
         )
     )
     );
-    const CACHE_TIMEOUT = 0;
+    const CACHE_TIMEOUT = 3600;
 
     public function getIcon()
     {
