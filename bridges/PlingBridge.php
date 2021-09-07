@@ -23,23 +23,33 @@ class PlingBridge extends BridgeAbstract
     {
         $queryUrl = $this->createQueryUrl();
 
-        $html = getSimpleHTMLDOM($queryUrl) or returnServerError('Could not load themes');
+        $pattern = "/(?<=var productBrowseDataEncoded = ').*?(?=';*)/"; // base64
 
-        foreach ($html->find('.explore-product') as $element) {
+        $html = getContents($queryUrl) or returnServerError('Could not load themes');
 
-            $icon = $element->find('img.explore-product-image', 0);
-            $details = $element->find('div.explore-product-details', 0)->plaintext;
+        preg_match($pattern, $html, $matches);
 
-            $link = $element->find('div.explore-product-details', 0)->children(0)->children(0);
-            $url = 'https://www.pling.com' . $link->href;
+        if (empty($matches)) {
+            return;
+        }
 
-            $title = $link->plaintext;
+        $json = json_decode(base64_decode($matches[0]));
+        $products = $json -> products;
 
+        foreach ($products as $product) {
+
+            $icon = $this -> createIcon($product -> image_small);
+            $details = $product -> description;
+            $url = $this -> createUrl($product);
+            $title = $product -> title;
+            $author = $product -> username;
+            $content = $this -> createContent($product, $url);
 
             $item = array();
 
             $item['title'] = $title;
-            $item['content'] = '<div>' . $icon . '<a href="' . $url . '">' . $details . '</a></div>';
+            $item['author'] = $author;
+            $item['content'] = $content;
             $item['uri'] = $url;
 
             $this->items[] = $item;
@@ -49,5 +59,22 @@ class PlingBridge extends BridgeAbstract
     private function createQueryUrl()
     {
         return 'https://www.pling.com/s/Gnome/browse/ord/latest/';
+    }
+
+    private function createIcon($icon)
+    {
+        return '<img src="' . 'https://cdn.pling.com/cache/350x350-2/img/' . $icon . '" />';
+    }
+
+    private function createUrl($product)
+    {
+        return 'https://www.pling.com/s/Gnome/p/' . $product -> project_id;
+    }
+
+    private function createContent($product, $url)
+    {
+        $icon = $this -> createIcon($product -> image_small);
+        $details = $product -> description;
+        return '<div>' . $icon . '<a href="' . $url . '"><p>' . $details . '</p></a></div>';
     }
 }
