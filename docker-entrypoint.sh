@@ -5,7 +5,7 @@
 # This will overwrite previous configs and bridges of same name
 # If there are no matching files, rss-bridge works like default.
 
-find /config/ -type f -name '*.*' -print0 | 
+find /config/ -type f -name '*' -print0 | 
 while IFS= read -r -d '' file; do
     file_name="$(basename "$file")" # Strip leading path
     if [[ $file_name = *" "* ]]; then
@@ -22,8 +22,19 @@ while IFS= read -r -d '' file; do
     whitelist.txt)  yes | cp "$file" /app/ ;
                     chown www-data:www-data "/app/$file_name";
                     printf "Custom whitelist.txt added.\n";;
+    DEBUG)          yes | cp "$file" /app/ ;
+                    chown www-data:www-data "/app/$file_name";
+                    printf "DEBUG file added.\n";;
     esac
 done
+
+# This feature can set the internal port that apache uses to something else.
+# If docker is run on network:service mode, no two containers can use port 80
+# To use this, start the container with the additional environment variable "HTTP_PORT"
+if [ ! -z ${HTTP_PORT} ]; then
+	sed -i "s/80/$HTTP_PORT/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
+fi
+
 
 # Start apache
 apache2-foreground

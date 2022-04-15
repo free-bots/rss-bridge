@@ -17,7 +17,8 @@ class UnogsBridge extends BridgeAbstract {
 					'What\'s New' => 'new last 7 days',
 					'Expiring' => 'expiring'
 				)
-			)
+			),
+			'limit' => self::LIMIT,
 		),
 		'Global' => array(),
 		'Country' => array(
@@ -74,7 +75,7 @@ class UnogsBridge extends BridgeAbstract {
 		if($this->queriedContext == 'Global') {
 			$feedName .= 'Netflix Global - ';
 		} elseif($this->queriedContext == 'Country') {
-			$feedName .= 'Netflix Country Code: ' . $this->getInput('country_code') . ' - ';
+			$feedName .= 'Netflix ' . $this->getParametersKey('country_code') . ' - ';
 		}
 		if($this->getInput('feed') == 'expiring') {
 			$feedName .= 'Expiring title';
@@ -84,6 +85,20 @@ class UnogsBridge extends BridgeAbstract {
 			$feedName = self::NAME;
 		}
 		return $feedName;
+	}
+
+	private function getParametersKey($input = '') {
+		$params = $this->getParameters();
+		$tab = 'Country';
+		if (!isset($params[$tab][$input])) {
+			return '';
+		}
+
+		return array_search(
+			$this->getInput($input),
+			$params[$tab][$input]['values']
+		);
+
 	}
 
 	private function getJSON($url) {
@@ -99,9 +114,15 @@ class UnogsBridge extends BridgeAbstract {
 	private function getImage($nfid) {
 		$url = self::URI . '/api/title/bgimages?netflixid=' . $nfid;
 		$json = $this->getJSON($url);
-		end($json['bo1280x448']);
-		$position = key($json['bo1280x448']);
-		$image_link = $json['bo1280x448'][$position]['url'];
+		$image_wrapper = '';
+		if(isset($json['bo1280x448'])) {
+			$image_wrapper = 'bo1280x448';
+		} else {
+			$image_wrapper = 'bo665x375';
+		}
+		end($json[$image_wrapper]);
+		$position = key($json[$image_wrapper]);
+		$image_link = $json[$image_wrapper][$position]['url'];
 		return $image_link;
 	}
 
@@ -140,8 +161,17 @@ EOD;
 				break;
 		}
 
-		$api_url = self::URI . '/api/search?query=' . urlencode($feed)
-				. ($country_code ? '&countrylist=' . $country_code : '') . '&limit=30';
+		$limit = $this->getInput('limit') ?? 30;
+
+		// https://rapidapi.com/unogs/api/unogsng/details
+		$api_url = sprintf(
+			'%s/api/search?query=%s%s&limit=%s',
+			self::URI,
+			urlencode($feed),
+			$country_code ? '&countrylist=' . $country_code : '',
+			$limit
+		);
+
 		$json_data = $this->getJSON($api_url);
 		$movies = $json_data['results'];
 
