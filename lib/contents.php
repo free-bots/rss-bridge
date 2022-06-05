@@ -36,6 +36,7 @@ const RSSBRIDGE_HTTP_STATUS_CODES = [
 	'415' => 'Unsupported Media Type',
 	'416' => 'Requested Range Not Satisfiable',
 	'417' => 'Expectation Failed',
+	'429' => 'Too Many Requests',
 	'500' => 'Internal Server Error',
 	'501' => 'Not Implemented',
 	'502' => 'Bad Gateway',
@@ -49,14 +50,21 @@ const RSSBRIDGE_HTTP_STATUS_CODES = [
  *
  * @param array $httpHeaders E.g. ['Content-type: text/plain']
  * @param array $curlOptions Associative array e.g. [CURLOPT_MAXREDIRS => 3]
- * @param bool $returnHeader Whether to include headers in the returned value
+ * @param bool $returnFull Whether to return an array:
+ *                         [
+ *                              'code' => int,
+ *                              'header' => array,
+ *                              'content' => string,
+ *                              'status_lines' => array,
+ *                         ]
+
  * @return string|array
  */
 function getContents(
 	string $url,
 	array $httpHeaders = [],
 	array $curlOptions = [],
-	bool $returnHeader = false
+	bool $returnFull = false
 ) {
 	$cacheFactory = new CacheFactory();
 	$cacheFactory->setWorkingDir(PATH_LIB_CACHES);
@@ -78,6 +86,8 @@ function getContents(
 
 	$result = _http_request($url, $config);
 	$response = [
+		'code' => $result['code'],
+		'status_lines' => $result['status_lines'],
 		'header' => $result['headers'],
 		'content' => $result['body'],
 	];
@@ -106,11 +116,12 @@ function getContents(
 				sprintf(
 					'%s %s',
 					$result['code'],
-					RSSBRIDGE_HTTP_STATUS_CODES[$result['code']] ?? $result['code']
-				)
+					RSSBRIDGE_HTTP_STATUS_CODES[$result['code']] ?? ''
+				),
+				$result['code']
 			);
 	}
-	if ($returnHeader === true) {
+	if ($returnFull === true) {
 		return $response;
 	}
 	return $response['content'];
@@ -158,10 +169,15 @@ function _http_request(string $url, array $config = []): array
 		curl_setopt($ch, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
 	}
 
+	$responseStatusLines = [];
 	$responseHeaders = [];
-	curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $rawHeader) use (&$responseHeaders) {
+	curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $rawHeader) use (&$responseHeaders, &$responseStatusLines) {
 		$len = strlen($rawHeader);
-		if (preg_match('#^HTTP/(2|1.1|1.0)#', $rawHeader) || $rawHeader === "\r\n") {
+		if ($rawHeader === "\r\n") {
+			return $len;
+		}
+		if (preg_match('#^HTTP/(2|1.1|1.0)#', $rawHeader)) {
+			$responseStatusLines[] = $rawHeader;
 			return $len;
 		}
 		$header = explode(':', $rawHeader);
@@ -195,6 +211,7 @@ function _http_request(string $url, array $config = []): array
 	curl_close($ch);
 	return [
 		'code'      => $statusCode,
+		'status_lines' => $responseStatusLines,
 		'headers'   => $responseHeaders,
 		'body'      => $data,
 	];
