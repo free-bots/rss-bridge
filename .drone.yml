@@ -1,0 +1,15 @@
+kind: pipeline
+type: docker
+name: push-to-registry
+
+steps:
+  - name: docker
+    image: plugins/docker
+    settings:
+      repo: bots-server:5000/free-bots/rss-bridge
+      tags: latest
+      registry: bots-server:5000
+      force_tag: true
+      insecure: true
+    when:
+      branch: master
