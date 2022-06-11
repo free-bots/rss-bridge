@@ -13,3 +13,11 @@ steps:
       insecure: true
     when:
       branch: botsFlavor
+  - name: redeploy
+    image: plugins/webhook
+    settings:
+      urls: http://bots-server:1150/redeploy
+      content_type: application/json
+      template: { "stack": "rss-bridge" }
+    when:
+      branch: botsFlavor
