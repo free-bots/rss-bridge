@@ -1,46 +1,22 @@
-name: Scheduled merge action
+name:  Sync Upstream
 on: 
   schedule:
     - cron: '0 0 * * *'
     # scheduled for 00:00 every day
   workflow_dispatch:
-    inputs:
-      upstream:
-        description: 'Upstream repository owner/name (e.g. discdiver/merge-from-upstream-repo)'
-        required: true
-        default: 'RSS-Bridge/rss-bridge'       # set the upstream repo
-      upstream-branch:
-        description: 'Upstream branch to merge from (e.g. main)'
-        required: true
-        default: 'master'           # set the upstream branch to merge from
-      branch:
-        description: 'Branch to merge to'
-        required: true
-        default: 'botsFlavor'         # set the branch to merge to
-      useremail: 
-        description: 'User email - required for git commits'
-        required: true
-        default: 'free-bots.to@protonmail.com'
-      username:
-        description: 'User name - required for git commits'
-        required: true
-        default: 'free-bots'
 
 jobs:
-  merge-from-upstream-repo:
+  build:
     runs-on: ubuntu-latest
-    steps: 
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.branch }}             # set the branch to merge to
-          fetch-depth: 0            # get all changes
-      - name: Merge from upstream repo
-        uses: discdiver/merge-from-upstream-repo@v0.0.9
-        with:
-          useremail: ${{ github.event.inputs.useremail }}
-          username: ${{ github.event.inputs.usename }}
-          upstream: ${{ github.event.inputs.upstream }}
-          upstream-branch: ${{ github.event.inputs.upstream-branch }}
-          branch: ${{ github.event.inputs.branch }}
-          
+    steps:
+    - name: Sync and merge upstream repository
+      uses: dabreadman/sync-upstream-repo@v1.3.0
+      with:
+        # URL of gitHub public upstream repo
+        upstream_repo: "https://github.com/RSS-Bridge/rss-bridge.git"
+        # Branch to merge from upstream (defaults to downstream branch)
+        upstream_branch: master
+        # Branch to merge into downstream
+        downstream_branch: botsFlavor
+        # GitHub Bot token
+        token: ${{ secrets.GITHUB_TOKEN }}
