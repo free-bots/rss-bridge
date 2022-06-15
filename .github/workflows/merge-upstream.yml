@@ -20,9 +20,11 @@ on:
       useremail: 
         description: 'User email - required for git commits'
         required: true
+        default: 'free-bots.to@protonmail.com'
       username:
         description: 'User name - required for git commits'
         required: true
+        default: 'free-bots'
 
 jobs:
   merge-from-upstream-repo:
