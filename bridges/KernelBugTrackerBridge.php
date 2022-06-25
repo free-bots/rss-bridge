@@ -3,7 +3,8 @@ class KernelBugTrackerBridge extends BridgeAbstract {
 
 	const NAME = 'Kernel Bug Tracker';
 	const URI = 'https://bugzilla.kernel.org';
-	const DESCRIPTION = 'Returns feeds for bug comments';
+	const DESCRIPTION = 'DEPRECATED: Use BugzillaBridge instead.
+Returns feeds for bug comments';
 	const MAINTAINER = 'logmanoriginal';
 	const PARAMETERS = array(
 		'Bug comments' => array(
@@ -77,7 +78,9 @@ class KernelBugTrackerBridge extends BridgeAbstract {
 		// Order comments
 		switch($sorting) {
 			case 'lf': $comments = array_reverse($comments, true);
+				// fall-through
 			case 'of':
+				// fall-through
 			default: // Nothing to do, keep original order
 		}
 
