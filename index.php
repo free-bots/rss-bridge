@@ -27,12 +27,17 @@ try {
 } catch (\Throwable $e) {
     error_log($e);
 
-    $code = $e->getCode();
-    if ($code !== -1) {
-        header('Content-Type: text/plain', true, $code);
-    }
+    $message = sprintf(
+        'Uncaught Exception %s: %s at %s line %s',
+        get_class($e),
+        $e->getMessage(),
+        trim_path_prefix($e->getFile()),
+        $e->getLine()
+    );
 
-    $message = sprintf("Uncaught Exception %s: '%s'\n", get_class($e), $e->getMessage());
-
-    print $message;
+    http_response_code(500);
+    print render('error.html.php', [
+        'message' => $message,
+        'stacktrace' => create_sane_stacktrace($e),
+    ]);
 }

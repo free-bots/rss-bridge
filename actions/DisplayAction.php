@@ -16,33 +16,27 @@ class DisplayAction implements ActionInterface
 {
     public $userData = [];
 
-    private function getReturnCode($error)
-    {
-        $returnCode = $error->getCode();
-        if ($returnCode === 301 || $returnCode === 302) {
-            # Don't pass redirect codes to the exterior
-            $returnCode = 508;
-        }
-        return $returnCode;
-    }
-
     public function execute()
     {
-        $bridge = array_key_exists('bridge', $this->userData) ? $this->userData['bridge'] : null;
+        $bridgeFactory = new \BridgeFactory();
+
+        $bridgeClassName = isset($this->userData['bridge']) ? $bridgeFactory->sanitizeBridgeName($this->userData['bridge']) : null;
+
+        if ($bridgeClassName === null) {
+            throw new \InvalidArgumentException('Bridge name invalid!');
+        }
 
         $format = $this->userData['format']
             or returnClientError('You must specify a format!');
 
-        $bridgeFactory = new \BridgeFactory();
-
         // whitelist control
-        if (!$bridgeFactory->isWhitelisted($bridge)) {
+        if (!$bridgeFactory->isWhitelisted($bridgeClassName)) {
             throw new \Exception('This bridge is not whitelisted', 401);
             die;
         }
 
         // Data retrieval
-        $bridge = $bridgeFactory->create($bridge);
+        $bridge = $bridgeFactory->create($bridgeClassName);
         $bridge->loadConfiguration();
 
         $noproxy = array_key_exists('_noproxy', $this->userData)
@@ -59,7 +53,7 @@ class DisplayAction implements ActionInterface
                 unset($this->userData['_cache_timeout']);
                 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) . '?' . http_build_query($this->userData);
                 header('Location: ' . $uri, true, 301);
-                die();
+                exit;
             }
 
             $cache_timeout = filter_var($this->userData['_cache_timeout'], FILTER_VALIDATE_INT);
@@ -122,7 +116,7 @@ class DisplayAction implements ActionInterface
 
                 if ($mtime <= $stime) { // Cached data is older or same
                     header('Last-Modified: ' . gmdate('D, d M Y H:i:s ', $mtime) . 'GMT', true, 304);
-                    die();
+                    exit;
                 }
             }
 
@@ -184,17 +178,31 @@ class DisplayAction implements ActionInterface
                         );
 
                         $item->setTimestamp(time());
-                        $item->setContent(buildBridgeException($e, $bridge));
+
+                        $message = sprintf(
+                            'Uncaught Exception %s: %s at %s line %s',
+                            get_class($e),
+                            $e->getMessage(),
+                            trim_path_prefix($e->getFile()),
+                            $e->getLine()
+                        );
+
+                        $content = render_template('bridge-error.html.php', [
+                            'message' => $message,
+                            'stacktrace' => create_sane_stacktrace($e),
+                            'searchUrl' => self::createGithubSearchUrl($bridge),
+                            'issueUrl' => self::createGithubIssueUrl($bridge, $e, $message),
+                            'bridge' => $bridge,
+                        ]);
+                        $item->setContent($content);
 
                         $items[] = $item;
                     } elseif (Configuration::getConfig('error', 'output') === 'http') {
-                        header('Content-Type: text/html', true, $this->getReturnCode($e));
-                        die(buildTransformException($e, $bridge));
+                        throw $e;
                     }
                 }
             }
 
-            // Store data in cache
             $cache->saveData([
                 'items' => array_map(function ($i) {
                     return $i->toArray();
@@ -203,24 +211,40 @@ class DisplayAction implements ActionInterface
             ]);
         }
 
-        // Data transformation
-        try {
-            $formatFactory = new FormatFactory();
-            $format = $formatFactory->create($format);
-            $format->setItems($items);
-            $format->setExtraInfos($infos);
-            $lastModified = $cache->getTime();
-            $format->setLastModified($lastModified);
-            if ($lastModified) {
-                header('Last-Modified: ' . gmdate('D, d M Y H:i:s ', $lastModified) . 'GMT');
-            }
-            header('Content-Type: ' . $format->getMimeType() . '; charset=' . $format->getCharset());
-
-            echo $format->stringify();
-        } catch (\Throwable $e) {
-            error_log($e);
-            header('Content-Type: text/html', true, $e->getCode());
-            die(buildTransformException($e, $bridge));
+        $formatFactory = new FormatFactory();
+        $format = $formatFactory->create($format);
+        $format->setItems($items);
+        $format->setExtraInfos($infos);
+        $lastModified = $cache->getTime();
+        $format->setLastModified($lastModified);
+        if ($lastModified) {
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s ', $lastModified) . 'GMT');
         }
+        header('Content-Type: ' . $format->getMimeType() . '; charset=' . $format->getCharset());
+        print $format->stringify();
+    }
+
+    private static function createGithubIssueUrl($bridge, $e, string $message): string
+    {
+        return sprintf('https://github.com/RSS-Bridge/rss-bridge/issues/new?%s', http_build_query([
+            'title' => sprintf('%s failed with error %s', $bridge->getName(), $e->getCode()),
+            'body' => sprintf(
+                "```\n%s\n\n%s\n\nQuery string:%s\nVersion:%s\n```",
+                $message,
+                implode("\n", create_sane_stacktrace($e)),
+                $_SERVER['QUERY_STRING'] ?? '',
+                Configuration::getVersion(),
+            ),
+            'labels' => 'Bridge-Broken',
+            'assignee' => $bridge->getMaintainer(),
+        ]));
+    }
+
+    private static function createGithubSearchUrl($bridge): string
+    {
+        return sprintf(
+            'https://github.com/RSS-Bridge/rss-bridge/issues?q=%s',
+            urlencode('is:issue is:open ' . $bridge->getName())
+        );
     }
 }
