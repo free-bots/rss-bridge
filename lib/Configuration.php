@@ -21,7 +21,7 @@ final class Configuration
 {
     private const VERSION = 'dev.2022-06-14';
 
-    private static array $config = [];
+    private static $config = [];
 
     private function __construct()
     {
@@ -194,7 +194,7 @@ final class Configuration
             if (isset($parts[3])) {
                 $branchName = $parts[3];
                 if (file_exists($revisionHashFile)) {
-                    return 'git.' . $branchName . '.' . substr(file_get_contents($revisionHashFile), 0, 7);
+                    return sprintf('%s (git.%s.%s)', self::VERSION, $branchName, substr(file_get_contents($revisionHashFile), 0, 7));
                 }
             }
         }
