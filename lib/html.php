@@ -187,11 +187,11 @@ function defaultLinkTo($dom, $url)
 
     // Use long method names for compatibility with simple_html_dom and DOMDocument
 
-    foreach ($dom->getElementsByTagName('img') as $image) {
+    foreach ($dom->getElementsByTagName('img', null) as $image) {
         $image->setAttribute('src', urljoin($url, $image->getAttribute('src')));
     }
 
-    foreach ($dom->getElementsByTagName('a') as $anchor) {
+    foreach ($dom->getElementsByTagName('a', null) as $anchor) {
         $anchor->setAttribute('href', urljoin($url, $anchor->getAttribute('href')));
     }
 
