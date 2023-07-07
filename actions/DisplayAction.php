@@ -16,6 +16,10 @@ class DisplayAction implements ActionInterface
 {
     public function execute(array $request)
     {
+        if (Configuration::getConfig('system', 'enable_maintenance_mode')) {
+            return new Response('503 Service Unavailable', 503);
+        }
+
         $bridgeFactory = new BridgeFactory();
 
         $bridgeClassName = $bridgeFactory->createBridgeClassName($request['bridge'] ?? '');
@@ -87,8 +91,9 @@ class DisplayAction implements ActionInterface
 
         $cache = $cacheFactory->create();
         $cache->setScope('');
-        $cache->purgeCache(86400); // 24 hours
         $cache->setKey($cache_params);
+        // This cache purge will basically delete all cache items older than 24h, regardless of scope and key
+        $cache->purgeCache(86400);
 
         $items = [];
         $infos = [];
@@ -211,7 +216,7 @@ class DisplayAction implements ActionInterface
         $cache = $cacheFactory->create();
         $cache->setScope('error_reporting');
         $cache->setkey([$bridgeName . '_' . $code]);
-        $cache->purgeCache(86400); // 24 hours
+
         if ($report = $cache->loadData()) {
             $report = Json::decode($report);
             $report['time'] = time();
