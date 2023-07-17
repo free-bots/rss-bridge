@@ -2,6 +2,7 @@
 
 final class RssBridge
 {
+    private static HttpClient $httpClient;
     private static CacheInterface $cache;
 
     public function main(array $argv = [])
@@ -16,7 +17,7 @@ final class RssBridge
         try {
             $this->run($request);
         } catch (\Throwable $e) {
-            Logger::error('Exception in main', ['e' => $e]);
+            Logger::error(sprintf('Exception in RssBridge::main(): %s', create_sane_exception_message($e)), ['e' => $e]);
             http_response_code(500);
             print render(__DIR__ . '/../templates/error.html.php', ['e' => $e]);
         }
@@ -71,9 +72,10 @@ final class RssBridge
         // Consider: ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
         date_default_timezone_set(Configuration::getConfig('system', 'timezone'));
 
-        // Create cache
         $cacheFactory = new CacheFactory();
-        self::setCache($cacheFactory->create());
+
+        self::$httpClient = new CurlHttpClient();
+        self::$cache = $cacheFactory->create();
 
         if (Configuration::getConfig('authentication', 'enable')) {
             $authenticationMiddleware = new AuthenticationMiddleware();
@@ -105,13 +107,13 @@ final class RssBridge
         }
     }
 
+    public static function getHttpClient(): HttpClient
+    {
+        return self::$httpClient;
+    }
+
     public static function getCache(): CacheInterface
     {
         return self::$cache;
-    }
-
-    public static function setCache(CacheInterface $cache): void
-    {
-        self::$cache = $cache;
     }
 }
