@@ -76,10 +76,10 @@ class VkBridge extends BridgeAbstract
                 break;
             }
         }
-        $pageName = $html->find('.page_name', 0);
+        $pageName = $html->find('meta[property="og:title"]', 0);
         if (is_object($pageName)) {
-            $pageName = $pageName->plaintext;
-            $this->pageName = htmlspecialchars_decode($pageName);
+            $pageName = $pageName->getAttribute('content');
+            $this->pageName = $pageName;
         }
         foreach ($html->find('div.replies') as $comment_block) {
             $comment_block->outertext = '';
@@ -453,7 +453,7 @@ class VkBridge extends BridgeAbstract
     {
         $content = explode('<br>', $content)[0];
         $content = strip_tags($content);
-        preg_match('/.+?(?=[\.\n])/mu', htmlspecialchars_decode($content), $result);
+        preg_match('/^[:\,"\w\ \p{L}\(\)\?#«»\-\–\—||&\.%\\₽\/+\;\!]+/mu', htmlspecialchars_decode($content), $result);
         if (count($result) == 0) {
             return 'untitled';
         }
