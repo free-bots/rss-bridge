@@ -30,30 +30,31 @@ class TapasBridge extends FeedExpander
 
     protected $id;
 
-    public function getURI()
+    public function collectData()
     {
-        if ($this->id) {
-            return self::URI . 'rss/series/' . $this->id;
-        } else {
-            return self::URI . 'series/' . $this->getInput('title') . '/info/';
+        if (preg_match('/^[\d]+$/', $this->getInput('title'))) {
+            $this->id = $this->getInput('title');
         }
-        return self::URI;
+        if ($this->getInput('force_title') or !$this->id) {
+            $html = getSimpleHTMLDOM($this->getURI()) or returnServerError('Could not request ' . $this->getURI());
+            $this->id = $html->find('meta[property$=":url"]', 0)->content;
+            $this->id = str_ireplace(['tapastic://series/', '/info'], '', $this->id);
+        }
+        $this->collectExpandableDatas($this->getURI());
     }
 
-    protected function parseItem($feedItem)
+    protected function parseItem(array $item)
     {
-        $item = parent::parseItem($feedItem);
-
-        $namespaces = $feedItem->getNamespaces(true);
-        if (isset($namespaces['content'])) {
-            $description = $feedItem->children($namespaces['content']);
-            if (isset($description->encoded)) {
-                $item['content'] = (string)$description->encoded;
-            }
-        }
+//        $namespaces = $feedItem->getNamespaces(true);
+//        if (isset($namespaces['content'])) {
+//            $description = $feedItem->children($namespaces['content']);
+//            if (isset($description->encoded)) {
+//                $item['content'] = (string)$description->encoded;
+//            }
+//        }
 
         if ($this->getInput('extend_content')) {
-            $html = getSimpleHTMLDOM($item['uri']) or returnServerError('Could not request ' . $this->getURI());
+            $html = getSimpleHTMLDOM($item['uri']);
             if (!$item['content']) {
                 $item['content'] = '';
             }
@@ -72,16 +73,11 @@ class TapasBridge extends FeedExpander
         return $item;
     }
 
-    public function collectData()
+    public function getURI()
     {
-        if (preg_match('/^[\d]+$/', $this->getInput('title'))) {
-            $this->id = $this->getInput('title');
+        if ($this->id) {
+            return self::URI . 'rss/series/' . $this->id;
         }
-        if ($this->getInput('force_title') or !$this->id) {
-            $html = getSimpleHTMLDOM($this->getURI()) or returnServerError('Could not request ' . $this->getURI());
-            $this->id = $html->find('meta[property$=":url"]', 0)->content;
-            $this->id = str_ireplace(['tapastic://series/', '/info'], '', $this->id);
-        }
-        $this->collectExpandableDatas($this->getURI());
+        return self::URI;
     }
 }
