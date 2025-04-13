@@ -306,13 +306,13 @@ function convertLazyLoading($dom)
         if (!empty($img->getAttribute('data-src'))) {
             $img->src = $img->getAttribute('data-src');
         } elseif (!empty($img->getAttribute('data-srcset'))) {
-            $img->src = parseSrcset($img->getAttribute('data-srcset'));
+            $img->src = parseSrcset($img->getAttribute('data-srcset'), true);
         } elseif (!empty($img->getAttribute('data-lazy-src'))) {
             $img->src = $img->getAttribute('data-lazy-src');
         } elseif (!empty($img->getAttribute('data-orig-file'))) {
             $img->src = $img->getAttribute('data-orig-file');
         } elseif (!empty($img->getAttribute('srcset'))) {
-            $img->src = parseSrcset($img->getAttribute('srcset'));
+            $img->src = parseSrcset($img->getAttribute('srcset'), true);
         } else {
             continue; // Proceed to next element without removing attributes
         }
