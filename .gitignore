@@ -226,7 +226,6 @@ pip-log.txt
 ##############
 /cache
 DEBUG
-config.ini.php
 config/*
 !config/nginx.conf
 !config/php-fpm.conf
