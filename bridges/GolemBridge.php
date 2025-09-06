@@ -94,15 +94,16 @@ class GolemBridge extends FeedExpander
                 }
             }
 
-            $item['content'] .= $this->extractContent($articlePage, $item['content']);
-
             // next page
-            $nextUri = $articlePage->find('li.go-pagination__item--next>a', 0);
+            $nextUri = $articlePage->find('li.go-pagination__item--next a', 0);
             if ($nextUri) {
                 $uri = $nextUri->href;
             } else {
                 $uri = null;
             }
+
+            // Only extract the content (and remove content) after all pre-processing is done
+            $item['content'] .= $this->extractContent($articlePage, $item['content']);
         }
 
         return $item;
@@ -140,7 +141,7 @@ class GolemBridge extends FeedExpander
         // delete known bad elements and unwanted gallery images
         foreach (
             $article->find('div[id*="adtile"], #job-market, #seminars, iframe, .go-article-header__title, .go-article-header__kicker, .go-label--sponsored,
-                        .gbox_affiliate, div.toc, .go-button-bar, .go-alink-list, .go-teaser-block, .go-vh, .go-paywall, .go-index-link, .go-pagination__list,
+                        .gbox_affiliate, div.toc, .go-button-bar, .go-alink-list, .go-teaser-block, .go-vh, .go-paywall, .go-index, .go-pagination__list,
                         .go-gallery .[data-active="false"], .go-article-header__series') as $bad
         ) {
             $bad->remove();
