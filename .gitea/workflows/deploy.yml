@@ -28,4 +28,4 @@ jobs:
           push: true
           tags: ${{ vars.DOCKER_REGISTRY }}/free-bots/rss-bridge:latest
       - name: Webhook
-        run: 'curl -i -H "Accept: application/json" -H "Content-Type:application/json" -X POST --data "{\"stack\": \"rss-bridge\"}" ${{ vars.REDEPLOY_URL }}'
+        run: 'curl -i -H "Accept: application/json" -H "Content-Type:application/json" -X POST --data "{\"project\": \"rss-bridge\"}" ${{ vars.REDEPLOY_URL }}'
