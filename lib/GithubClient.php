@@ -13,11 +13,16 @@ class GithubClient
 
     private CacheInterface $cache;
     private Logger $logger;
+    private ?string $token;
 
-    public function __construct(CacheInterface $cache, Logger $logger)
-    {
+    public function __construct(
+        CacheInterface $cache,
+        Logger $logger,
+        ?string $token = null
+    ) {
         $this->cache = $cache;
         $this->logger = $logger;
+        $this->token = $token;
     }
 
     public function fetchIssues(string $owner, string $repo): array
@@ -39,7 +44,12 @@ class GithubClient
         return array_map([$this, 'map'], $pulls);
     }
 
-    public function fetchComments(string $owner, string $repo, int $id): array
+    public function fetchPullRequestComments(string $owner, string $repo, int $id): array
+    {
+        return $this->fetchIssueComments($owner, $repo, $id);
+    }
+
+    public function fetchIssueComments(string $owner, string $repo, int $id): array
     {
         $comments = $this->fetch(sprintf('/repos/%s/%s/issues/%s/comments', $owner, $repo, $id));
 
@@ -61,8 +71,13 @@ class GithubClient
 
         $this->logger->info(sprintf('github: github_client->fetch(%s)', $url));
 
+        $headers = [];
+        if ($this->token) {
+            $headers[] = 'Authorization: Bearer ' . $this->token;
+        }
+
         try {
-            $response = getContents(self::BASE . $url, [], [], true);
+            $response = getContents(self::BASE . $url, $headers, [], true);
 
             $limit      = $response->getHeader('x-ratelimit-limit');
             $remaining  = $response->getHeader('x-ratelimit-remaining');

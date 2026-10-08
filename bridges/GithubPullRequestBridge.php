@@ -9,6 +9,11 @@ class GitHubPullRequestBridge extends BridgeAbstract
     const URI = 'https://github.com/';
     const CACHE_TIMEOUT = 3600 * 24; // 24h
     const DESCRIPTION = 'Returns the pull request or comments of a pull request of a GitHub project';
+    const CONFIGURATION = [
+        'token' => [
+            'required' => false,
+        ],
+    ];
 
     const PARAMETERS = [
         'global' => [
@@ -45,14 +50,22 @@ class GitHubPullRequestBridge extends BridgeAbstract
 
     public function collectData()
     {
-        $client = new GithubClient($this->cache, $this->logger);
+        $client = new GithubClient($this->cache, $this->logger, $this->getOption('token'));
 
         $owner = $this->getInput('u');
         $repo = $this->getInput('p');
+        $id = $this->getInput('i');
+
+        if (! $repo) {
+            return;
+        }
 
         switch ($this->queriedContext) {
             case 'Project Pull Requests':
                 $this->items = $client->fetchPullRequests($owner, $repo);
+                break;
+            case 'Pull Request comments':
+                $this->items = $client->fetchPullRequestComments($owner, $repo, $id);
                 break;
         }
     }
